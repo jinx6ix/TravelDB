@@ -105,10 +105,8 @@ export default function RateCalculator({
   const [departureTransfer, setDepartureTransfer] = useState(false);
   const [departureTotal, setDepartureTotal] = useState(0);
 
-  // Option tables – now explicitly for Pax 1 to 8 (each with editable markup)
-  const [options, setOptions] = useState(
-    Array.from({ length: 8 }, (_, i) => ({ pax: i + 1, markup: 10 }))
-  );
+  // Option tables – dynamic based on total pax (capped at 8)
+  const [options, setOptions] = useState<{ pax: number; markup: number }[]>([]);
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -116,6 +114,25 @@ export default function RateCalculator({
   const [saveError, setSaveError] = useState('');
 
   const numPax = numAdults + numChildren;
+  const maxDisplayPax = Math.min(numPax, 8); // Car capacity max 8
+
+  // Update options whenever numPax changes
+  useEffect(() => {
+    const newLength = maxDisplayPax;
+    setOptions(prev => {
+      // If length unchanged, keep existing markups for matching pax values
+      if (prev.length === newLength && prev.every((opt, idx) => opt.pax === idx + 1)) {
+        return prev;
+      }
+      // Generate new array with default markup 10 for each pax from 1 to newLength
+      const newOptions = [];
+      for (let p = 1; p <= newLength; p++) {
+        const existing = prev.find(opt => opt.pax === p);
+        newOptions.push({ pax: p, markup: existing?.markup ?? 10 });
+      }
+      return newOptions;
+    });
+  }, [numPax, maxDisplayPax]);
 
   // =============================================================================
   // AUTO-FILL & SYNC
@@ -723,7 +740,7 @@ export default function RateCalculator({
                           <span className="text-gray-400 text-xs block text-center">
                             per child
                           </span>
-                         </td>
+                        </td>
                       )}
                       <td className="px-2 py-2">
                         <input
@@ -1016,7 +1033,7 @@ export default function RateCalculator({
           </div>
 
           <div className="px-4 py-2 bg-orange-50 border-t border-orange-100 font-semibold text-gray-700">
-            Option Tables – Per Person Sharing (P.P.S)
+            Option Tables – Per Person Sharing (P.P.S) – Up to {maxDisplayPax} pax (max vehicle capacity 8)
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -1062,6 +1079,11 @@ export default function RateCalculator({
                 ))}
               </tbody>
             </table>
+            {maxDisplayPax === 0 && (
+              <div className="p-4 text-center text-gray-400 text-sm">
+                Enter at least 1 adult to see pricing options.
+              </div>
+            )}
           </div>
         </div>
 
